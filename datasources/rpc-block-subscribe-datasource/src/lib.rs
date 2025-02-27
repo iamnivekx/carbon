@@ -174,6 +174,14 @@ impl Datasource for RpcBlockSubscribe {
                                     }
 
                                     metrics
+                                        .update_gauge(
+                                            "block_subscribe_slot",
+                                            slot as f64
+                                        )
+                                        .await
+                                        .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
+
+                                    metrics
                                         .record_histogram(
                                             "block_subscribe_block_process_time_nanoseconds",
                                             block_start_time.elapsed().as_nanos() as f64
