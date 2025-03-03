@@ -7,6 +7,7 @@ rust-version = "1.82"
 version = "0.5.1"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/sevenlabs-hq/carbon"
 
 [workspace.dependencies]
 # main
@@ -14,6 +15,7 @@ carbon-cli = { path = "crates/cli", version = "0.5.1" }
 carbon-core = { path = "crates/core", version = "0.5.1" }
 carbon-macros = { path = "crates/macros", version = "0.5.1" }
 carbon-proc-macros = { path = "crates/proc-macros", version = "0.5.1" }
+carbon-test-utils = { path = "crates/test-utils", version = "0.5.1" }
 
 # datasources
 carbon-helius-atlas-ws-datasource = { path = "datasources/helius-atlas-ws-datasource", version = "0.5.1" }
@@ -43,6 +45,7 @@ carbon-moonshot-decoder = { path = "decoders/moonshot-decoder", version = "0.5.1
 carbon-mpl-core-decoder = { path = "decoders/mpl-core-decoder", version = "0.5.1" }
 carbon-mpl-token-metadata-decoder = { path = "decoders/mpl-token-metadata-decoder", version = "0.5.1" }
 carbon-name-service-decoder = { path = "decoders/name-service-decoder", version = "0.5.1" }
+carbon-okx-dex-decoder = { path = "decoders/okx-dex-decoder", version = "0.5.1" }
 carbon-openbook-v2-decoder = { path = "decoders/openbook-v2-decoder", version = "0.5.1" }
 carbon-orca-whirlpool-decoder = { path = "decoders/orca-whirlpool-decoder", version = "0.5.1" }
 carbon-phoenix-v1-decoder = { path = "decoders/phoenix-v1-decoder", version = "0.5.1" }
@@ -77,6 +80,7 @@ bincode = "1.3.3"
 borsh = { version = "1.5.1" }
 borsh-derive-internal = "0.10.3"
 bs58 = "0.5.1"
+base64 = "0.22.1"
 clap = { version = "4.5.30", features = ["derive"] }
 console = "0.15.8"
 dialoguer = { version = "0.11.0", default-features = false, features = ["editor"] }

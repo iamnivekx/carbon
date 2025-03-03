@@ -4,6 +4,8 @@ version = "0.5.1"
 edition = { workspace = true }
 description = "Core library for Carbon"
 license = { workspace = true }
+readme = "./README.md"
+repository = { workspace = true }
 
 [features]
 default = ["macros"]
@@ -15,7 +17,7 @@ solana-sdk = { workspace = true }
 solana-transaction-status = { workspace = true }
 
 async-trait = { workspace = true }
-borsh = { version = "0.10.3" }
+borsh = { version = "0.10.4" }
 bs58 = { workspace = true }
 futures = { workspace = true }
 log = { workspace = true }

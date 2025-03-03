@@ -4,6 +4,8 @@ version = "0.5.1"
 description = "Moonshot Decoder"
 license = { workspace = true }
 edition = { workspace = true }
+readme = "./README.md"
+repository = { workspace = true }
 
 [lib]
 crate-type = ["rlib"]
@@ -12,3 +14,6 @@ crate-type = ["rlib"]
 carbon-core = { workspace = true }
 serde = { workspace = true }
 solana-sdk = { workspace = true }
+
+[dev-dependencies]
+carbon-test-utils = { workspace = true }
