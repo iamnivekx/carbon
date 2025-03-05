@@ -14,7 +14,7 @@ use {
     },
     std::{
         sync::Arc,
-        time::{Duration, SystemTime, UNIX_EPOCH},
+        time::{Duration, UNIX_EPOCH},
     },
     tokio::sync::mpsc::UnboundedSender,
     tokio_util::sync::CancellationToken,
@@ -124,23 +124,13 @@ impl Datasource for RpcBlockSubscribe {
 
                                 if let Some(block) = tx_event.value.block {
                                     let block_start_time = std::time::Instant::now();
-                                    if let Some(block_time) = block.block_time {
-                                        let block_time_instant = UNIX_EPOCH + Duration::from_secs(block_time as u64);
-                                        match block_time_instant.elapsed() {
-                                            Ok(time_since) => {
-                                                metrics
-                                                    .record_histogram(
-                                                        "block_subscribe_received_time_behind_secs",
-                                                        time_since.as_secs_f64()
-                                                    )
-                                                    .await
-                                                    .unwrap_or_else(|err| log::error!("Error recording block time metric: {}", err));
-                                            },
-                                            Err(err) => {
-                                                log::debug!("Could not calculate elapsed time from block: {:?}", err);
-                                            }
-                                        }
-                                    }
+
+                                    self.record_behind_block_time_metric(
+                                        &metrics,
+                                        block.block_time,
+                                        "block_subscribe_transactions_received_behind_time_secs"
+                                    ).await;
+
                                     if let Some(transactions) = block.transactions {
                                         for encoded_transaction_with_status_meta in transactions {
                                             let start_time = std::time::Instant::now();
@@ -174,23 +164,11 @@ impl Datasource for RpcBlockSubscribe {
                                                 block_time: block.block_time,
                                             }));
 
-                                            if let Some(block_time) = block.block_time {
-                                                let block_time_instant = UNIX_EPOCH + Duration::from_secs(block_time as u64);
-                                                match block_time_instant.elapsed() {
-                                                    Ok(time_since) => {
-                                                        metrics
-                                                            .record_histogram(
-                                                                "block_subscribe_transactions_processed_behind_secs",
-                                                                time_since.as_secs_f64()
-                                                            )
-                                                            .await
-                                                            .unwrap_or_else(|err| log::error!("Error recording block time metric: {}", err));
-                                                    },
-                                                    Err(err) => {
-                                                        log::debug!("Could not calculate elapsed time from block: {:?}", err);
-                                                    }
-                                                }
-                                            }
+                                            self.record_behind_block_time_metric(
+                                                &metrics,
+                                                block.block_time,
+                                                "block_subscribe_transactions_processed_behind_time_secs"
+                                            ).await;
 
                                             metrics
                                                 .record_histogram(
@@ -226,23 +204,11 @@ impl Datasource for RpcBlockSubscribe {
                                         .await
                                         .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
 
-                                    if let Some(block_time) = block.block_time {
-                                        let block_time_instant = UNIX_EPOCH + Duration::from_secs(block_time as u64);
-                                        match block_time_instant.elapsed() {
-                                            Ok(time_since) => {
-                                                metrics
-                                                    .record_histogram(
-                                                        "block_subscribe_block_time_secs",
-                                                        time_since.as_secs_f64()
-                                                    )
-                                                    .await
-                                                    .unwrap_or_else(|err| log::error!("Error recording block time metric: {}", err));
-                                            },
-                                            Err(err) => {
-                                                log::debug!("Could not calculate elapsed time from block: {:?}", err);
-                                            }
-                                        }
-                                    }
+                                    self.record_behind_block_time_metric(
+                                        &metrics,
+                                        block.block_time,
+                                        "block_subscribe_block_processed_behind_time_secs"
+                                    ).await;
 
                                     metrics
                                         .record_histogram(
@@ -274,5 +240,35 @@ impl Datasource for RpcBlockSubscribe {
 
     fn update_types(&self) -> Vec<UpdateType> {
         vec![UpdateType::Transaction]
+    }
+}
+
+impl RpcBlockSubscribe {
+    async fn record_behind_block_time_metric(
+        &self,
+        metrics: &MetricsCollection,
+        block_time: Option<i64>,
+        metric_name: &str,
+    ) {
+        if let Some(block_time) = block_time {
+            let block_time_instant = UNIX_EPOCH + Duration::from_secs(block_time as u64);
+            match block_time_instant.elapsed() {
+                Ok(time_since) => {
+                    metrics
+                        .record_histogram(metric_name, time_since.as_secs_f64())
+                        .await
+                        .unwrap_or_else(|err| {
+                            log::error!(
+                                "Error recording {} block time metric: {}",
+                                metric_name,
+                                err
+                            )
+                        });
+                }
+                Err(err) => {
+                    log::debug!("Could not calculate elapsed time from block: {:?}", err);
+                }
+            }
+        }
     }
 }
