@@ -128,7 +128,7 @@ impl Datasource for RpcBlockSubscribe {
                                     self.record_behind_block_time_metric(
                                         &metrics,
                                         block.block_time,
-                                        "block_subscribe_transactions_received_behind_time_secs"
+                                        "block_subscribe_transactions_received_time_behind_secs"
                                     ).await;
 
                                     if let Some(transactions) = block.transactions {
@@ -164,26 +164,20 @@ impl Datasource for RpcBlockSubscribe {
                                                 block_time: block.block_time,
                                             }));
 
+                                            metrics
+                                                .record_histogram(
+                                                    "block_subscribe_transaction_process_time_nanoseconds",
+                                                    start_time.elapsed().as_nanos() as f64
+                                                )
+                                                .await
+                                                .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
+
                                             self.record_behind_block_time_metric(
                                                 &metrics,
                                                 block.block_time,
-                                                "block_subscribe_transactions_processed_behind_time_secs"
+                                                "block_subscribe_transaction_processed_time_behind_nanoseconds"
                                             ).await;
 
-                                            metrics
-                                                .record_histogram(
-                                                    "block_subscribe_transaction_process_time_nanoseconds",
-                                                    start_time.elapsed().as_nanos() as f64
-                                                )
-                                                .await
-                                                .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
-                                            metrics
-                                                .record_histogram(
-                                                    "block_subscribe_transaction_process_time_nanoseconds",
-                                                    start_time.elapsed().as_nanos() as f64
-                                                )
-                                                .await
-                                                .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
 
                                             metrics.increment_counter("block_subscribe_transactions_processed", 1)
                                                 .await
@@ -207,7 +201,7 @@ impl Datasource for RpcBlockSubscribe {
                                     self.record_behind_block_time_metric(
                                         &metrics,
                                         block.block_time,
-                                        "block_subscribe_block_processed_behind_time_secs"
+                                        "block_subscribe_block_processed_time_behind_secs"
                                     ).await;
 
                                     metrics
@@ -266,7 +260,7 @@ impl RpcBlockSubscribe {
                         });
                 }
                 Err(err) => {
-                    log::debug!("Could not calculate elapsed time from block: {:?}", err);
+                    log::warn!("Could not calculate elapsed time from block: {:?}", err);
                 }
             }
         }
