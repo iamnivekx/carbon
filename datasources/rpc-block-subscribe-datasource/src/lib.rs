@@ -12,7 +12,10 @@ use {
         rpc_client::SerializableTransaction,
         rpc_config::{RpcBlockSubscribeConfig, RpcBlockSubscribeFilter},
     },
-    std::{sync::Arc, time::Duration},
+    std::{
+        sync::Arc,
+        time::{Duration, SystemTime, UNIX_EPOCH},
+    },
     tokio::sync::mpsc::UnboundedSender,
     tokio_util::sync::CancellationToken,
 };
@@ -161,6 +164,13 @@ impl Datasource for RpcBlockSubscribe {
                                                 )
                                                 .await
                                                 .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
+                                            metrics
+                                                .record_histogram(
+                                                    "block_subscribe_transaction_process_time_nanoseconds",
+                                                    start_time.elapsed().as_nanos() as f64
+                                                )
+                                                .await
+                                                .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
 
                                             metrics.increment_counter("block_subscribe_transactions_processed", 1)
                                                 .await
@@ -180,6 +190,24 @@ impl Datasource for RpcBlockSubscribe {
                                         )
                                         .await
                                         .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
+
+                                    if let Some(block_time) = block.block_time {
+                                        let block_time_instant = UNIX_EPOCH + Duration::from_secs(block_time as u64);
+                                        match block_time_instant.elapsed() {
+                                            Ok(time_since) => {
+                                                metrics
+                                                    .record_histogram(
+                                                        "block_subscribe_block_time_secs",
+                                                        time_since.as_secs_f64()
+                                                    )
+                                                    .await
+                                                    .unwrap_or_else(|err| log::error!("Error recording block time metric: {}", err));
+                                            },
+                                            Err(err) => {
+                                                log::debug!("Could not calculate elapsed time from block: {:?}", err);
+                                            }
+                                        }
+                                    }
 
                                     metrics
                                         .record_histogram(
