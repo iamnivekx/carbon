@@ -12,7 +12,10 @@ use {
         rpc_client::SerializableTransaction,
         rpc_config::{RpcBlockSubscribeConfig, RpcBlockSubscribeFilter},
     },
-    std::{sync::Arc, time::Duration},
+    std::{
+        sync::Arc,
+        time::{Duration, UNIX_EPOCH},
+    },
     tokio::sync::mpsc::UnboundedSender,
     tokio_util::sync::CancellationToken,
 };
@@ -121,6 +124,14 @@ impl Datasource for RpcBlockSubscribe {
 
                                 if let Some(block) = tx_event.value.block {
                                     let block_start_time = std::time::Instant::now();
+
+                                    self.record_block_time_latency(
+                                        "block_subscribe_transactions_received_time_behind_secs",
+                                        block.block_time,
+                                        &metrics,
+
+                                    ).await;
+
                                     if let Some(transactions) = block.transactions {
                                         for encoded_transaction_with_status_meta in transactions {
                                             let start_time = std::time::Instant::now();
@@ -162,6 +173,14 @@ impl Datasource for RpcBlockSubscribe {
                                                 .await
                                                 .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
 
+                                            self.record_block_time_latency(
+                                                "block_subscribe_transaction_processed_time_behind_nanoseconds",
+                                                block.block_time,
+                                                &metrics,
+
+                                            ).await;
+
+
                                             metrics.increment_counter("block_subscribe_transactions_processed", 1)
                                                 .await
                                                 .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
@@ -172,6 +191,21 @@ impl Datasource for RpcBlockSubscribe {
                                             }
                                         }
                                     }
+
+                                    metrics
+                                        .update_gauge(
+                                            "block_subscribe_slot",
+                                            slot as f64
+                                        )
+                                        .await
+                                        .unwrap_or_else(|value| log::error!("Error recording metric: {}", value));
+
+                                    self.record_block_time_latency(
+                                        "block_subscribe_block_processed_time_behind_secs",
+                                        block.block_time,
+                                        &metrics,
+
+                                    ).await;
 
                                     metrics
                                         .record_histogram(
@@ -203,5 +237,35 @@ impl Datasource for RpcBlockSubscribe {
 
     fn update_types(&self) -> Vec<UpdateType> {
         vec![UpdateType::Transaction]
+    }
+}
+
+impl RpcBlockSubscribe {
+    async fn record_block_time_latency(
+        &self,
+        metric_name: &str,
+        block_time: Option<i64>,
+        metrics: &MetricsCollection,
+    ) {
+        if let Some(block_time) = block_time {
+            let block_time_instant = UNIX_EPOCH + Duration::from_secs(block_time as u64);
+            match block_time_instant.elapsed() {
+                Ok(time_since) => {
+                    metrics
+                        .record_histogram(metric_name, time_since.as_secs_f64())
+                        .await
+                        .unwrap_or_else(|err| {
+                            log::error!(
+                                "Error recording {} block time metric: {}",
+                                metric_name,
+                                err
+                            )
+                        });
+                }
+                Err(err) => {
+                    log::warn!("Could not calculate elapsed time from block: {:?}", err);
+                }
+            }
+        }
     }
 }
